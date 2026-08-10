@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProTec BIM Services</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: 0 auto; background: white; padding: 20px 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        #loginScreen { max-width: 500px; text-align: center; margin-top: 10%; }
+        .login-btn-staff { background-color: #2980b9; padding: 15px; font-size: 18px; margin-bottom: 20px; }
+        .login-btn-admin { background-color: #34495e; padding: 15px; font-size: 18px; }
+        #adminLoginArea, #staffLoginArea { display: none; margin-top: 20px; background: #ecf0f1; padding: 20px; border-radius: 8px; }
+        
+        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #34495e; padding-bottom: 10px; margin-bottom: 20px; }
+        .header-top h1 { margin: 0; color: #2c3e50; font-size: 24px; display: flex; align-items: center; gap: 15px; }
+        .header-logo { height: 40px; } 
+        .btn-logout { background-color: #e74c3c; width: auto; padding: 8px 15px; margin: 0; font-size: 14px; }
+        .btn-logout:hover { background-color: #c0392b; }
+
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #ddd; flex-wrap: wrap; }
+        .tab { padding: 10px 20px; cursor: pointer; font-weight: bold; color: #7f8c8d; }
+        .tab.active { color: #2980b9; border-bottom: 3px solid #2980b9; margin-bottom: -2px; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .admin-only, .staff-only { display: none; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, button { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        input[type="checkbox"] { width: auto; margin-right: 10px; }
+        button { cursor: pointer; color: white; border: none; margin-top: 10px; font-size: 16px; }
+        
+        .btn-export { background-color: #27ae60; width: auto; padding: 8px 15px; margin-bottom: 10px; font-size: 14px; float: right; }
+        .btn-export:hover { background-color: #219653; }
+        
+        .portal-box { background: #e8f4f8; padding: 30px; border-radius: 8px; text-align: center; border: 2px dashed #2980b9; }
+        .clock-buttons { display: flex; gap: 15px; margin-top: 20px; justify-content: center; }
+        .btn-in { background-color: #27ae60; font-size: 20px; padding: 15px; max-width: 200px; }
+        .btn-in:hover { background-color: #219653; }
+        .btn-out { background-color: #e74c3c; font-size: 20px; padding: 15px; max-width: 200px; }
+        .btn-out:hover { background-color: #c0392b; }
+        .live-clock { font-size: 24px; font-weight: bold; color: #2c3e50; margin-bottom: 20px; }
+
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 10px; }
+        .header-row h3 { margin: 0; }
+        table { width: 100%; border-collapse: collapse; clear: both; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; vertical-align: middle; }
+        th { background-color: #f8f9fa; }
+        .status-present { color: green; font-weight: bold; }
+        .status-absent { color: red; font-weight: bold; }
+        .status-leave { color: #8e44ad; font-weight: bold; }
+        .salary-highlight { color: #27ae60; font-size: 1.1em; font-weight: bold; }
+        .holiday-badge { background-color: #f39c12; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; }
+        
+        .profile-pic-preview { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-top: 10px; border: 2px solid #ccc; display: none; }
+        .table-profile-pic { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .kiosk-profile-pic { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin: 10px auto; border: 3px solid #2980b9; display: none; }
+        
+        .btn-delete { background-color: #e74c3c; width: auto; padding: 6px 12px; font-size: 13px; margin: 0; }
+        .btn-delete:hover { background-color: #c0392b; }
+
+        /* Leave Balances UI */
+        .leave-balances { display: flex; justify-content: center; gap: 20px; margin: 15px 0; }
+        .leave-card { background: white; border: 1px solid #ccc; padding: 10px 20px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .leave-card h4 { margin: 0 0 5px 0; color: #7f8c8d; font-size: 12px; text-transform: uppercase; }
+        .leave-card p { margin: 0; font-size: 20px; font-weight: bold; color: #2c3e50; }
+        .leave-card.annual { border-left: 4px solid #3498db; }
+        .leave-card.medical { border-left: 4px solid #e74c3c; }
+    </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="loginScreen" class="container">
+    <img src="LOGO.png" alt="ProTec Logo" style="max-height: 120px; margin-bottom: 15px;">
+    <h1 style="color: #2980b9; margin-top: 0;">Welcome to ProTec BIM Services</h1>
+    <p>Please select your portal</p>
+    
+    <button class="login-btn-staff" onclick="showStaffLogin()">Enter as Staff</button>
+    <button class="login-btn-admin" onclick="showAdminLogin()">Enter as HR / Admin</button>
+    
+    <div id="staffLoginArea">
+        <label style="text-align: left;">Email or Staff ID</label>
+        <input type="text" id="staffUsername" placeholder="Enter Email or ID">
+        <label style="text-align: left; margin-top: 10px;">Password</label>
+        <input type="password" id="staffPwd" placeholder="Enter Password">
+        <button style="background-color: #2980b9;" onclick="loginAsStaffSubmit()">Login to Portal</button>
+        <p id="staffLoginError" style="color: red; display: none; margin-top: 10px;">Invalid credentials.</p>
+    </div>
+
+    <div id="adminLoginArea">
+        <label style="text-align: left;">Admin PIN</label>
+        <input type="password" id="adminPwd" placeholder="Enter PIN">
+        <button style="background-color: #27ae60;" onclick="loginAsAdmin()">Login to Admin Panel</button>
+        <p id="loginError" style="color: red; display: none; margin-top: 10px;">Incorrect PIN.</p>
+    </div>
+</div>
+
+<!-- Main Application -->
+<div id="mainApp" style="display: none;">
+    <div class="container">
+        <div class="header-top">
+            <h1 id="appHeaderTitle">
+                <img src="LOGO.png" alt="Logo" class="header-logo">
+                <span id="appHeaderTitleText">ProTec BIM - HR Dashboard</span>
+            </h1>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab staff-only" onclick="switchTab('portal')">⏱️ My Kiosk</div>
+            <div class="tab admin-only" onclick="switchTab('users')">Staff Accounts</div>
+            <div class="tab admin-only" onclick="switchTab('attendance')">HR Attendance Records</div>
+            <div class="tab admin-only" onclick="switchTab('payroll')">Monthly Payroll</div>
+            <div class="tab admin-only" onclick="switchTab('settings')">⚙️ Settings</div>
+        </div>
+
+        <!-- Staff Portal Kiosk Section -->
+        <div id="portal-section" class="section staff-only-section">
+            <div class="portal-box">
+                <h2>Self-Service Attendance Kiosk</h2>
+                <div class="live-clock" id="liveClock">Loading SGT Time...</div>
+                
+                <div class="form-group" style="max-width: 500px; margin: 0 auto; text-align: center;">
+                    <img id="kioskProfilePreview" class="kiosk-profile-pic" src="" alt="Profile">
+                    <h3 id="kioskUserNameDisplay" style="color: #2980b9; margin-bottom: 5px;"></h3>
+                    
+                    <div class="leave-balances">
+                        <div class="leave-card annual">
+                            <h4>Remaining Annual</h4>
+                            <p id="kioskAnnualLeave">--</p>
+                        </div>
+                        <div class="leave-card medical">
+                            <h4>Remaining Medical</h4>
+                            <p id="kioskMedicalLeave">--</p>
+                        </div>
+                    </div>
+
+                    <p style="margin-top: 10px; color: #7f8c8d;">Please clock in or out for your shift.</p>
+                </div>
+                
+                <div class="clock-buttons">
+                    <button class="btn-in" onclick="clockAction('in')">Clock IN</button>
+                    <button class="btn-out" onclick="clockAction('out')">Clock OUT</button>
+                </div>
+                <div id="kioskMessage" style="margin-top: 20px; font-weight: bold;"></div>
+            </div>
+        </div>
+
+        <!-- User Accounts Section (Admin) -->
+        <div id="users-section" class="section admin-only-section">
+            <h3>Register New Staff</h3>
+            <form id="userForm">
+                <div style="display: flex; gap: 20px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Profile Picture</label>
+                        <input type="file" id="userProfilePic" accept="image/*" onchange="previewProfilePic(event)">
+                        <img id="profilePicPreview" class="profile-pic-preview" src="" alt="Preview">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Staff Password (for Kiosk Login)</label>
+                        <input type="password" id="userPassword" required placeholder="Assign a password">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 20px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Full Name</label>
+                        <input type="text" id="userName" required placeholder="Enter full name">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Email / Staff ID (Username)</label>
+                        <input type="text" id="userEmail" required placeholder="Enter email or ID">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Base Monthly Salary ($)</label>
+                        <input type="number" id="userRate" required min="0" step="0.01" placeholder="e.g. 3500.00">
+                    </div>
+                </div>
+                <!-- Leave Allocations -->
+                <div style="display: flex; gap: 20px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Annual Leave Allocation (Days)</label>
+                        <input type="number" id="userAnnualLeave" required min="0" step="0.5" value="14" placeholder="e.g. 14">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Medical Leave Allocation (Days)</label>
+                        <input type="number" id="userMedicalLeave" required min="0" step="0.5" value="14" placeholder="e.g. 14">
+                    </div>
+                </div>
+                <button type="submit" style="background-color: #2980b9;">Create Staff Account</button>
+            </form>
+
+            <div class="header-row">
+                <h3>Registered Staff</h3>
+                <button class="btn-export" onclick="exportToExcel('usersTable', 'Staff_List')">📄 Export to Excel</button>
+            </div>
+            <table id="usersTable">
+                <thead>
+                    <tr><th>Profile</th><th>Name</th><th>Password</th><th>Monthly Base</th><th>Leaves (AL / ML)</th><th>Date Added</th><th>Actions</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- HR Attendance Section (Admin) -->
+        <div id="attendance-section" class="section admin-only-section">
+            <h3>Manual HR Override & Holiday Entry</h3>
+            <form id="attendanceForm">
+                <div class="form-group">
+                    <label>Select Staff Member</label>
+                    <select id="attendanceUser" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="attendanceDate" required>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; margin-top: 10px; margin-bottom: 10px;">
+                    <input type="checkbox" id="attendanceHoliday">
+                    <label for="attendanceHoliday" style="margin: 0; color: #e67e22;">Mark as Public Holiday (Applies Overtime Rate)</label>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="attendanceStatus" onchange="toggleManualDayValue()">
+                        <option value="Present">Present</option>
+                        <option value="Absent">Absent</option>
+                        <option value="Annual Leave">Annual Leave</option>
+                        <option value="Medical Leave">Medical Leave</option>
+                    </select>
+                </div>
+                <div class="form-group" id="manualDayValueGroup">
+                    <label>Day Value (Full / Half Day)</label>
+                    <select id="manualDayValue">
+                        <option value="1">Full Day (1.0)</option>
+                        <option value="0.5">Half Day (0.5)</option>
+                    </select>
+                </div>
+                <button type="submit" style="background-color: #2980b9;">Update/Log Record</button>
+            </form>
+
+            <div class="header-row">
+                <h3>Master Attendance Records</h3>
+                <button class="btn-export" onclick="exportToExcel('attendanceTable', 'Attendance_Records')">📄 Export to Excel</button>
+            </div>
+            <table id="attendanceTable">
+                <thead>
+                    <tr><th>Date</th><th>Name</th><th>Time In</th><th>Time Out</th><th>Day Type</th><th>Holiday</th><th>Status</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Payroll & Calendar Section (Admin) -->
+        <div id="payroll-section" class="section admin-only-section">
+            <h3>Monthly Payroll Calculator</h3>
+            <div style="display: flex; gap: 20px; background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                    <label>Select Calendar Month</label>
+                    <input type="month" id="payrollMonth" onchange="generatePayroll()">
+                </div>
+                <div class="form-group" style="margin-bottom: 0; flex: 1;">
+                    <label>Total Working Days in Month</label>
+                    <input type="number" id="workingDays" value="22" min="1" max="31" onchange="generatePayroll()">
+                    <small style="color: #666;">Used to calculate daily rate deductions/OT.</small>
+                </div>
+            </div>
+            
+            <div class="header-row">
+                <h3>Payroll Summary</h3>
+                <button class="btn-export" onclick="exportToExcel('payrollTable', 'Monthly_Payroll')">📄 Export to Excel</button>
+            </div>
+            <table id="payrollTable">
+                <thead>
+                    <tr><th>Staff Name</th><th>Monthly Base</th><th>Paid Days (Work + Leave)</th><th>Holiday OT Days</th><th>Total Salary Calculated</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Admin Settings Section -->
+        <div id="settings-section" class="section admin-only-section">
+            <h3>Admin System Settings</h3>
+            
+            <div class="form-group" style="max-width: 400px; padding: 20px; background: #ecf0f1; border-radius: 8px; margin-bottom: 20px;">
+                <label>Holiday Overtime Multiplier</label>
+                <p style="font-size: 13px; margin-top: 0;">Set the rate multiplier for Days worked on Public Holidays (e.g., 1.5 for time-and-a-half, 2.0 for double pay).</p>
+                <input type="number" id="holidayMultiplier" step="0.1" min="1" placeholder="e.g. 2.0">
+                <button style="background-color: #2980b9;" onclick="updateHolidayRate()">Save OT Rate</button>
+                <p id="otMsg" style="margin-top: 10px; font-weight: bold;"></p>
+            </div>
+
+            <div class="form-group" style="max-width: 400px; padding: 20px; background: #ecf0f1; border-radius: 8px;">
+                <label>Update Admin PIN</label>
+                <input type="password" id="newAdminPin" placeholder="Enter new PIN">
+                <button style="background-color: #e67e22;" onclick="updateAdminPin()">Save New PIN</button>
+                <p id="pinMsg" style="margin-top: 10px; font-weight: bold;"></p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // --- Data Management ---
+    let users = JSON.parse(localStorage.getItem('staffUsers')) || [];
+    let attendance = JSON.parse(localStorage.getItem('staffAttendance')) || [];
+    let loggedInUser = null; 
+    
+    const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2395a5a6"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+    
+    if(!localStorage.getItem('adminPIN')) localStorage.setItem('adminPIN', '1234');
+    if(!localStorage.getItem('holidayMultiplier')) localStorage.setItem('holidayMultiplier', '2.0');
+
+    function getAdminPIN() { return localStorage.getItem('adminPIN'); }
+    
+    function updateAdminPin() {
+        const newPin = document.getElementById('newAdminPin').value;
+        const msg = document.getElementById('pinMsg');
+        if(newPin.length < 4) {
+            msg.style.color = 'red';
+            msg.innerText = 'PIN must be at least 4 characters long.';
+            return;
+        }
+        localStorage.setItem('adminPIN', newPin);
+        document.getElementById('newAdminPin').value = '';
+        msg.style.color = 'green';
+        msg.innerText = 'Admin PIN successfully updated!';
+        setTimeout(() => { msg.innerText = ''; }, 3000);
+    }
+
+    function updateHolidayRate() {
+        const rate = parseFloat(document.getElementById('holidayMultiplier').value);
+        const msg = document.getElementById('otMsg');
+        if(rate >= 1) {
+            localStorage.setItem('holidayMultiplier', rate);
+            msg.style.color = 'green';
+            msg.innerText = 'Overtime Rate updated!';
+            setTimeout(() => { msg.innerText = ''; }, 3000);
+            generatePayroll(); 
+        } else {
+            msg.style.color = 'red';
+            msg.innerText = 'Multiplier must be 1.0 or higher.';
+        }
+    }
+
+    // --- Authentication & View Control ---
+    function showStaffLogin() {
+        document.getElementById('staffLoginArea').style.display = 'block';
+        document.getElementById('adminLoginArea').style.display = 'none';
+        document.getElementById('staffLoginError').style.display = 'none';
+        document.getElementById('loginError').style.display = 'none';
+    }
+
+    function showAdminLogin() {
+        document.getElementById('adminLoginArea').style.display = 'block';
+        document.getElementById('staffLoginArea').style.display = 'none';
+        document.getElementById('loginError').style.display = 'none';
+        document.getElementById('staffLoginError').style.display = 'none';
+    }
+
+    function loginAsStaffSubmit() {
+        const username = document.getElementById('staffUsername').value.trim();
+        const pwd = document.getElementById('staffPwd').value;
+        
+        const user = users.find(u => (u.email === username || u.name === username) && u.password === pwd);
+        
+        if(user) {
+            loggedInUser = user; 
+            
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('appHeaderTitleText').innerText = "ProTec BIM - Staff Portal";
+            
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.staff-only').forEach(el => el.style.display = 'block');
+            
+            document.getElementById('kioskUserNameDisplay').innerText = `Welcome, ${user.name}`;
+            const imgEl = document.getElementById('kioskProfilePreview');
+            imgEl.src = user.profilePic ? user.profilePic : DEFAULT_AVATAR;
+            imgEl.style.display = 'block';
+            
+            updateLeaveBalancesDisplay();
+            switchTab('portal');
+            
+            document.getElementById('staffUsername').value = '';
+            document.getElementById('staffPwd').value = '';
+            document.getElementById('staffLoginError').style.display = 'none';
+        } else {
+            document.getElementById('staffLoginError').style.display = 'block';
+        }
+    }
+
+    function updateLeaveBalancesDisplay() {
+        if(!loggedInUser) return;
+        
+        let usedAnnual = 0;
+        let usedMedical = 0;
+        
+        attendance.forEach(record => {
+            if (record.userName === loggedInUser.name) {
+                if (record.status === 'Annual Leave') usedAnnual += record.dayValue;
+                if (record.status === 'Medical Leave') usedMedical += record.dayValue;
+            }
+        });
+        
+        const totalAL = loggedInUser.annualLeave || 0;
+        const totalML = loggedInUser.medicalLeave || 0;
+        
+        document.getElementById('kioskAnnualLeave').innerText = `${totalAL - usedAnnual} Days`;
+        document.getElementById('kioskMedicalLeave').innerText = `${totalML - usedMedical} Days`;
+    }
+
+    function loginAsAdmin() {
+        const pwd = document.getElementById('adminPwd').value;
+        if (pwd === getAdminPIN()) {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('appHeaderTitleText').innerText = "ProTec BIM - HR Admin Dashboard";
+            
+            document.querySelectorAll('.staff-only').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+            
+            switchTab('users');
+            updateAdminDropdowns();
+            
+            document.getElementById('adminPwd').value = ''; 
+            document.getElementById('loginError').style.display = 'none';
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+        }
+    }
+
+    function logout() {
+        loggedInUser = null;
+        document.getElementById('mainApp').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'block';
+        document.getElementById('adminLoginArea').style.display = 'none';
+        document.getElementById('staffLoginArea').style.display = 'none';
+        document.getElementById('kioskMessage').innerText = '';
+        document.getElementById('kioskProfilePreview').style.display = 'none';
+    }
+
+    // --- Time Tracking & Core Logic ---
+    function getSGTDateTime() {
+        const now = new Date();
+        const timeFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Singapore', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        const dateFormatter = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit', day: '2-digit' });
+        return { 
+            time: timeFormatter.format(now), 
+            date: dateFormatter.format(now),
+            timestamp: now.getTime()
+        };
+    }
+
+    setInterval(() => {
+        const sgt = getSGTDateTime();
+        document.getElementById('liveClock').innerText = `Current SGT: ${sgt.date} | ${sgt.time}`;
+    }, 1000);
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        
+        if (tab === 'portal') {
+            document.querySelectorAll('.tab.staff-only')[0].classList.add('active');
+            document.getElementById('portal-section').classList.add('active');
+            updateLeaveBalancesDisplay();
+        } else if (tab === 'users') {
+            document.querySelectorAll('.tab.admin-only')[0].classList.add('active');
+            document.getElementById('users-section').classList.add('active');
+        } else if (tab === 'attendance') {
+            document.querySelectorAll('.tab.admin-only')[1].classList.add('active');
+            document.getElementById('attendance-section').classList.add('active');
+        } else if (tab === 'payroll') {
+            document.querySelectorAll('.tab.admin-only')[2].classList.add('active');
+            document.getElementById('payroll-section').classList.add('active');
+            const monthInput = document.getElementById('payrollMonth');
+            if(!monthInput.value) monthInput.value = getSGTDateTime().date.substring(0, 7); 
+            generatePayroll();
+        } else if (tab === 'settings') {
+            document.querySelectorAll('.tab.admin-only')[3].classList.add('active');
+            document.getElementById('settings-section').classList.add('active');
+            document.getElementById('holidayMultiplier').value = localStorage.getItem('holidayMultiplier');
+        }
+    }
+
+    function updateAdminDropdowns() {
+        const hrSelect = document.getElementById('attendanceUser');
+        const optionsHTML = '<option value="">-- Select Staff --</option>' + users.map(user => `<option value="${user.name}">${user.name}</option>`).join('');
+        hrSelect.innerHTML = optionsHTML;
+    }
+
+    function toggleManualDayValue() {
+        const status = document.getElementById('attendanceStatus').value;
+        const dayValueGroup = document.getElementById('manualDayValueGroup');
+        if(status === 'Absent') {
+            dayValueGroup.style.display = 'none';
+        } else {
+            // Keep it visible for Present, Annual Leave, and Medical Leave (for half days)
+            dayValueGroup.style.display = 'block';
+        }
+    }
+
+    function clockAction(type) {
+        const msgDiv = document.getElementById('kioskMessage');
+        
+        if(!loggedInUser) {
+            msgDiv.style.color = "red";
+            msgDiv.innerText = "Error: Not logged in.";
+            return;
+        }
+        
+        const userName = loggedInUser.name;
+        const sgt = getSGTDateTime();
+        const today = sgt.date;
+        const currentTime = sgt.time;
+        const currentMs = sgt.timestamp;
+
+        let existingRecord = attendance.find(r => r.userName === userName && r.date === today);
+
+        if (type === 'in') {
+            if (existingRecord && existingRecord.timeIn !== '-') {
+                msgDiv.style.color = "orange";
+                msgDiv.innerText = `You have already clocked in today at ${existingRecord.timeIn}.`;
+            } else {
+                if(existingRecord) {
+                    existingRecord.timeIn = currentTime;
+                    existingRecord.timestampIn = currentMs;
+                    existingRecord.status = 'Present';
+                    existingRecord.dayValue = 1; 
+                } else {
+                    attendance.push({ 
+                        id: Date.now(), userName, date: today, 
+                        timeIn: currentTime, timeOut: '-', 
+                        timestampIn: currentMs, timestampOut: null,
+                        dayValue: 1, status: 'Present', isHoliday: false
+                    });
+                }
+                msgDiv.style.color = "green";
+                msgDiv.innerText = `Success! Clocked IN at ${currentTime} (SGT).`;
+            }
+        } else if (type === 'out') {
+            if (!existingRecord || existingRecord.timeIn === '-') {
+                msgDiv.style.color = "red";
+                msgDiv.innerText = "You need to Clock IN before you can Clock OUT.";
+            } else if (existingRecord.timeOut !== '-') {
+                msgDiv.style.color = "orange";
+                msgDiv.innerText = `You have already clocked out today at ${existingRecord.timeOut}.`;
+            } else {
+                existingRecord.timeOut = currentTime;
+                existingRecord.timestampOut = currentMs;
+                
+                const diffMs = existingRecord.timestampOut - existingRecord.timestampIn;
+                const hours = diffMs / (1000 * 60 * 60);
+                
+                existingRecord.dayValue = (hours <= 4.5) ? 0.5 : 1;
+                let dayText = existingRecord.dayValue === 1 ? "Full Day" : "Half Day";
+
+                msgDiv.style.color = "green";
+                msgDiv.innerText = `Success! Clocked OUT at ${currentTime} (SGT). Logged as a ${dayText}.`;
+            }
+        }
+        saveAttendance();
+    }
+
+    function deleteUser(userId) {
+        if(confirm("Are you sure you want to permanently delete this staff member? This will prevent them from logging in, but past attendance records will remain.")) {
+            users = users.filter(u => u.id !== userId);
+            localStorage.setItem('staffUsers', JSON.stringify(users));
+            renderUsers();
+            updateAdminDropdowns();
+        }
+    }
+
+    function previewProfilePic(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('profilePicPreview');
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        } else {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+    }
+
+    document.getElementById('userForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('userName').value;
+        const email = document.getElementById('userEmail').value;
+        const password = document.getElementById('userPassword').value;
+        const rate = parseFloat(document.getElementById('userRate').value);
+        const annualLeave = parseFloat(document.getElementById('userAnnualLeave').value);
+        const medicalLeave = parseFloat(document.getElementById('userMedicalLeave').value);
+        const fileInput = document.getElementById('userProfilePic');
+        
+        const saveUser = (picBase64) => {
+            users.push({ 
+                id: Date.now(), 
+                name, 
+                email, 
+                password,
+                rate, 
+                annualLeave,
+                medicalLeave,
+                dateAdded: getSGTDateTime().date,
+                profilePic: picBase64 
+            });
+            localStorage.setItem('staffUsers', JSON.stringify(users));
+            
+            this.reset();
+            document.getElementById('profilePicPreview').style.display = 'none';
+            document.getElementById('profilePicPreview').src = '';
+            
+            renderUsers();
+            updateAdminDropdowns();
+        };
+
+        if (fileInput.files && fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                saveUser(e.target.result);
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            saveUser('');
+        }
+    });
+
+    function renderUsers() {
+        const tbody = document.querySelector('#usersTable tbody');
+        tbody.innerHTML = '';
+        users.forEach(user => {
+            const picSrc = user.profilePic ? user.profilePic : DEFAULT_AVATAR;
+            const displayPwd = user.password ? user.password : '<span style="color:red">No Password</span>';
+            const al = user.annualLeave !== undefined ? user.annualLeave : 0;
+            const ml = user.medicalLeave !== undefined ? user.medicalLeave : 0;
+
+            tbody.innerHTML += `<tr>
+                <td><img src="${picSrc}" class="table-profile-pic" alt="Profile"></td>
+                <td>${user.name}<br><small style="color:#7f8c8d;">${user.email}</small></td>
+                <td>${displayPwd}</td>
+                <td>$${user.rate.toFixed(2)}</td>
+                <td><span style="color:#3498db; font-weight:bold;">${al} AL</span> / <span style="color:#e74c3c; font-weight:bold;">${ml} ML</span></td>
+                <td>${user.dateAdded}</td>
+                <td><button class="btn-delete" onclick="deleteUser(${user.id})">Delete</button></td>
+            </tr>`;
+        });
+    }
+
+    document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const userName = document.getElementById('attendanceUser').value;
+        const date = document.getElementById('attendanceDate').value;
+        const status = document.getElementById('attendanceStatus').value;
+        const isHoliday = document.getElementById('attendanceHoliday').checked;
+        let dayValue = parseFloat(document.getElementById('manualDayValue').value) || 1;
+
+        if(!userName) return alert("Please select a staff member.");
+
+        const exists = attendance.findIndex(r => r.userName === userName && r.date === date);
+        if(exists !== -1) {
+            attendance[exists].status = status; 
+            attendance[exists].isHoliday = isHoliday;
+            if(status === 'Absent') { 
+                attendance[exists].timeIn = '-'; 
+                attendance[exists].timeOut = '-'; 
+                attendance[exists].dayValue = 0;
+            } else {
+                attendance[exists].dayValue = dayValue;
+                if (attendance[exists].timeIn === '-') attendance[exists].timeIn = 'Manual Entry';
+                if (attendance[exists].timeOut === '-') attendance[exists].timeOut = 'Manual Entry';
+            }
+        } else {
+            attendance.push({ 
+                id: Date.now(), userName, date, 
+                timeIn: (status !== 'Absent') ? 'Manual Entry' : '-', 
+                timeOut: (status !== 'Absent') ? 'Manual Entry' : '-', 
+                dayValue: (status !== 'Absent') ? dayValue : 0, 
+                status, isHoliday 
+            });
+        }
+        alert("Record updated manually.");
+        saveAttendance();
+    });
+
+    function saveAttendance() {
+        attendance.sort((a, b) => new Date(b.date) - new Date(a.date));
+        localStorage.setItem('staffAttendance', JSON.stringify(attendance));
+        renderAttendance();
+        
+        if(loggedInUser && document.getElementById('portal-section').classList.contains('active')) {
+            updateLeaveBalancesDisplay();
+        }
+    }
+
+    function renderAttendance() {
+        const tbody = document.querySelector('#attendanceTable tbody');
+        tbody.innerHTML = '';
+        attendance.forEach(record => {
+            let statusClass = '';
+            if (record.status === 'Present') statusClass = 'status-present';
+            else if (record.status === 'Absent') statusClass = 'status-absent';
+            else statusClass = 'status-leave';
+
+            let dayDisplay = record.dayValue === 1 ? 'Full Day (1.0)' : (record.dayValue === 0.5 ? 'Half Day (0.5)' : '-');
+            const holidayBadge = record.isHoliday ? '<span class="holiday-badge">Public Holiday</span>' : 'Standard';
+            
+            tbody.innerHTML += `<tr><td>${record.date}</td><td>${record.userName}</td><td>${record.timeIn || '-'}</td><td>${record.timeOut || '-'}</td><td>${dayDisplay}</td><td>${holidayBadge}</td><td class="${statusClass}">${record.status}</td></tr>`;
+        });
+    }
+
+    function generatePayroll() {
+        const selectedMonth = document.getElementById('payrollMonth').value;
+        const workingDaysInMonth = parseFloat(document.getElementById('workingDays').value) || 22;
+        
+        if(!selectedMonth) return;
+        
+        const otMultiplier = parseFloat(localStorage.getItem('holidayMultiplier')) || 2.0;
+        const tbody = document.querySelector('#payrollTable tbody');
+        tbody.innerHTML = '';
+
+        users.forEach(user => {
+            let paidDays = 0;
+            let holDays = 0;
+
+            attendance.forEach(record => {
+                if(record.userName === user.name && record.date.startsWith(selectedMonth)) {
+                    if(record.status === 'Present' || record.status === 'Annual Leave' || record.status === 'Medical Leave') {
+                        if(record.isHoliday) {
+                            holDays += record.dayValue;
+                        } else {
+                            paidDays += record.dayValue;
+                        }
+                    }
+                }
+            });
+
+            const dailyRate = user.rate / workingDaysInMonth;
+            const stdSalary = paidDays * dailyRate;
+            const holSalary = holDays * (dailyRate * otMultiplier);
+            const totalSalary = stdSalary + holSalary;
+
+            tbody.innerHTML += `<tr>
+                <td>${user.name}</td>
+                <td>$${user.rate.toFixed(2)}</td>
+                <td>${paidDays}</td>
+                <td>${holDays}</td>
+                <td class="salary-highlight">$${totalSalary.toFixed(2)}</td>
+            </tr>`;
+        });
+    }
+
+    function exportToExcel(tableId, filename) {
+        let table = document.getElementById(tableId);
+        let cloneTable = table.cloneNode(true);
+        
+        if(tableId === 'usersTable') {
+            let rows = cloneTable.rows;
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].deleteCell(rows[i].cells.length - 1); 
+                rows[i].deleteCell(0); 
+            }
+        }
+
+        let wb = XLSX.utils.table_to_book(cloneTable, {sheet: "Sheet1"});
+        if (tableId === 'payrollTable') {
+            const month = document.getElementById('payrollMonth').value;
+            filename += '_' + month;
+        }
+        XLSX.writeFile(wb, filename + ".xlsx");
+    }
+
+    renderUsers();
+    renderAttendance();
+</script>
+
+</body>
+</html>
